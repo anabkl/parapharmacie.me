@@ -1,0 +1,21 @@
+{
+  "name": "parapharmacie-me",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "@stripe/stripe-js": "^8.8.0",
+    "chart.js": "^4.5.1",
+    "emailjs-com": "^3.2.0",
+    "firebase": "^12.10.0",
+    "stripe": "^20.4.0"
+  }
+}
