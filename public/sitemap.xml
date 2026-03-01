@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://parapharmacie.me/</loc></url>
+  <url><loc>https://parapharmacie.me/shop</loc></url>
   <url><loc>https://parapharmacie.me/cart</loc></url>
   <url><loc>https://parapharmacie.me/checkout</loc></url>
+  <url><loc>https://parapharmacie.me/login</loc></url>
+  <url><loc>https://parapharmacie.me/admin</loc></url>
 </urlset>

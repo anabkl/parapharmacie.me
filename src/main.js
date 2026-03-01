@@ -1,7 +1,9 @@
 import "./css/main.css";
-import { renderAdminProducts, adminCharts } from "./js/admin";
+import { renderShop } from "./js/shop";
+import { renderAdmin, bindAdminForm } from "./js/admin";
 
-document.addEventListener("DOMContentLoaded", () => {
-  renderAdminProducts();
-  adminCharts();
+document.addEventListener("DOMContentLoaded", ()=>{
+  renderShop();
+  renderAdmin();
+  bindAdminForm();
 });

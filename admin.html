@@ -1,0 +1,25 @@
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<div class="admin">
+  <aside class="sidebar">
+    <h3>Admin</h3>
+    <a href="/admin.html">Dashboard</a>
+    <a href="/shop.html">Boutique</a>
+  </aside>
+  <main class="admin-main">
+    <h2>Produits</h2>
+    <form id="productForm" class="form">
+      <input name="title" class="input" placeholder="Nom produit" required>
+      <input name="price" class="input" type="number" placeholder="Prix" required>
+      <input name="category" class="input" placeholder="Catégorie" required>
+      <input name="stock" class="input" type="number" placeholder="Stock" required>
+      <textarea name="description" class="input" placeholder="Description"></textarea>
+      <input name="image" class="input" type="file" required>
+      <button class="btn">Ajouter</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Nom</th><th>Prix</th><th>Catégorie</th><th>Stock</th><th>Action</th></tr></thead>
+      <tbody id="adminProducts"></tbody>
+    </table>
+  </main>
+</div>
+<script type="module" src="/src/main.js"></script></body></html>

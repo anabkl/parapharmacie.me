@@ -3,8 +3,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query } from "f
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export async function getProducts() {
-  const q = query(collection(db, "products"));
-  const snap = await getDocs(q);
+  const snap = await getDocs(query(collection(db, "products")));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
@@ -12,7 +11,7 @@ export async function addProduct(data, file) {
   const imgRef = ref(storage, `products/${Date.now()}_${file.name}`);
   await uploadBytes(imgRef, file);
   const url = await getDownloadURL(imgRef);
-  return addDoc(collection(db, "products"), { ...data, image: url });
+  return addDoc(collection(db, "products"), { ...data, image: url, active: true });
 }
 
 export async function updateProduct(id, data) {

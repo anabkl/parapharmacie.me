@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "parashop-tawfiq-v2"
-  }
+    "default": "parashop-tawfiq-v2",
+    "prod": "parashop-tawfiq-v2"
+  },
+  "targets": {},
+  "etags": {}
 }

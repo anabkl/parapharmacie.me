@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "localId": "admin001",
+      "email": "anaslahraoui16@gmail.com",
+      "emailVerified": true,
+      "passwordHash": "aGFzaGVkX3Bhc3N3b3Jk",
+      "salt": "c2FsdF92YWx1ZQ=="
+    }
+  ]
+}

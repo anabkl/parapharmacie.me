@@ -1,39 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() { return request.auth != null; }
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == "admin";
-    }
-
+    function isSignedIn(){return request.auth!=null;}
+    function isAdmin(){return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role=="admin";}
     match /products/{id} {
       allow read: if true;
       allow create, update, delete: if isAdmin() &&
-        request.resource.data.keys().hasOnly(["title","description","price","category","image","active","createdAt","updatedAt"]) &&
+        request.resource.data.keys().hasOnly(["title","description","price","category","stock","image","active"]) &&
         request.resource.data.title is string &&
         request.resource.data.description is string &&
         request.resource.data.category is string &&
         request.resource.data.image is string &&
         request.resource.data.active is bool &&
+        request.resource.data.stock is number &&
         request.resource.data.price is number &&
         request.resource.data.price > 0;
     }
-
     match /orders/{id} {
       allow create: if false;
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin());
-      allow update: if isAdmin() && request.resource.data.keys().hasOnly(["status","tracking","updatedAt","userId","items","total","createdAt","payment","address","phone","fullname"]);
+      allow read: if isSignedIn() && (request.auth.uid==resource.data.userId || isAdmin());
+      allow update: if isAdmin();
       allow delete: if false;
     }
-
-    match /errors/{id} {
-      allow create: if true;
-      allow read: if isAdmin();
-      allow update, delete: if false;
-    }
-
     match /roles/{id} {
-      allow read: if isSignedIn() && request.auth.uid == id;
+      allow read: if isSignedIn() && request.auth.uid==id;
       allow write: if false;
     }
   }

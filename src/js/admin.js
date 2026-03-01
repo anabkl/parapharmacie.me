@@ -1,62 +1,34 @@
-import { getProducts, deleteProduct, addProduct } from "./products";
-import { db } from "./firebase";
-import { collection, getDocs } from "firebase/firestore";
-import Chart from "chart.js/auto";
+import { getProducts, addProduct, deleteProduct, updateProduct } from "./products";
 
-export async function renderAdminProducts() {
-  const container = document.getElementById("adminProducts");
-  if (!container) return;
-
+export async function renderAdmin() {
+  const list = document.getElementById("adminProducts");
+  if (!list) return;
   const products = await getProducts();
-  container.innerHTML = products.map(p => `
-    <div>
-      <strong>${p.title}</strong> - ${p.price} MAD
-      <button data-id="${p.id}" class="delBtn">Supprimer</button>
-    </div>
+  list.innerHTML = products.map(p=>`
+    <tr>
+      <td>${p.title}</td><td>${p.price}</td><td>${p.category}</td><td>${p.stock}</td>
+      <td>
+        <button data-id="${p.id}" class="del btn-outline">Supprimer</button>
+      </td>
+    </tr>
   `).join("");
-
-  container.querySelectorAll(".delBtn").forEach(btn => {
-    btn.addEventListener("click", () => deleteProduct(btn.dataset.id));
-  });
+  list.querySelectorAll(".del").forEach(b=>b.onclick=()=>deleteProduct(b.dataset.id));
 }
 
-export async function adminCharts() {
-  const salesCanvas = document.getElementById("salesChart");
-  const ordersCanvas = document.getElementById("ordersChart");
-  if (!salesCanvas || !ordersCanvas) return;
-
-  const snap = await getDocs(collection(db, "orders"));
-  const orders = snap.docs.map(d => d.data());
-
-  const salesPerDay = {};
-  let totalRevenue = 0;
-
-  orders.forEach(o => {
-    const day = o.createdAt?.toDate().toISOString().split("T")[0];
-    salesPerDay[day] = (salesPerDay[day] || 0) + o.total;
-    totalRevenue += o.total || 0;
-  });
-
-  document.getElementById("totalRevenue").textContent = totalRevenue;
-
-  new Chart(salesCanvas, {
-    type: "line",
-    data: {
-      labels: Object.keys(salesPerDay),
-      datasets: [{ label: "Ventes", data: Object.values(salesPerDay) }]
-    }
-  });
-
-  const statusCount = orders.reduce((acc, o) => {
-    acc[o.status || "pending"] = (acc[o.status || "pending"] || 0) + 1;
-    return acc;
-  }, {});
-
-  new Chart(ordersCanvas, {
-    type: "pie",
-    data: {
-      labels: Object.keys(statusCount),
-      datasets: [{ data: Object.values(statusCount) }]
-    }
+export function bindAdminForm() {
+  const form=document.getElementById("productForm");
+  if(!form) return;
+  form.addEventListener("submit", async e=>{
+    e.preventDefault();
+    const f=new FormData(form);
+    await addProduct({
+      title:f.get("title"),
+      price:Number(f.get("price")),
+      category:f.get("category"),
+      stock:Number(f.get("stock")),
+      description:f.get("description")
+    }, f.get("image"));
+    form.reset();
+    renderAdmin();
   });
 }
