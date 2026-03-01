@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panier – Parapharmacie.me</title>
+  </head>
+  <body>
+    <header>
+      <div class="nav-container">
+        <a href="/index.html" class="brand">Parapharmacie<span>.me</span></a>
+        <nav>
+          <ul>
+            <li><a href="/index.html">Accueil</a></li>
+            <li><a href="/shop.html">Boutique</a></li>
+            <li><a href="/cart.html" class="cart-icon">🛒 Panier</a></li>
+            <li><a href="/login.html">Compte</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="container">
+          <h1 class="section-title">Mon Panier</h1>
+          <div id="cartItems" class="cart-items"></div>
+          <div id="cartTotal" class="cart-total" style="display:none">
+            <p class="total-label">Total</p>
+            <p id="totalAmount" class="total-amount"></p>
+            <div class="cart-actions">
+              <button id="emptyCartBtn" class="btn btn-outline btn-danger">Vider le panier</button>
+              <a href="/checkout.html" class="btn">Passer la commande</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-grid">
+        <div>
+          <h4>Parapharmacie.me</h4>
+          <p>Votre pharmacie en ligne de confiance au Maroc.</p>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <address>
+            251 ANCIENNE MÉDINA DU SÉCHAGE<br />
+            25010 Khouribga, Morocco<br />
+            <a href="tel:0520828417">0520-828417</a>
+          </address>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2024 PHARMACIE TAWFIQ – Tous droits réservés</p>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/js/cart-page.js"></script>
+  </body>
+</html>
