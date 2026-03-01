@@ -13,7 +13,9 @@ function showSection(name) {
   });
 }
 
-function initDashboard(unsubProducts, unsubOrders) {
+function initDashboard() {
+  const unsubscribes = [];
+
   // Sidebar navigation
   document.querySelectorAll('.admin-sidebar nav a[data-section]').forEach(a => {
     a.addEventListener('click', e => {
@@ -25,6 +27,7 @@ function initDashboard(unsubProducts, unsubOrders) {
   // Logout
   document.getElementById('logoutBtn').addEventListener('click', async e => {
     e.preventDefault();
+    unsubscribes.forEach(fn => fn());
     await signOut(auth);
     window.location.href = '/login.html';
   });
@@ -33,6 +36,7 @@ function initDashboard(unsubProducts, unsubOrders) {
   document.getElementById('addProductForm').addEventListener('submit', async e => {
     e.preventDefault();
     const msgEl = document.getElementById('productFormMsg');
+    msgEl.className = 'success-msg';
     msgEl.style.display = 'none';
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true;
@@ -69,7 +73,7 @@ function initDashboard(unsubProducts, unsubOrders) {
   });
 
   // Real-time products
-  unsubProducts = onSnapshot(collection(db, 'products'), snap => {
+  const unsubProducts = onSnapshot(collection(db, 'products'), snap => {
     const products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     document.getElementById('statProducts').textContent = products.length;
     const tbody = document.getElementById('productsTable');
@@ -92,9 +96,10 @@ function initDashboard(unsubProducts, unsubOrders) {
       });
     });
   });
+  unsubscribes.push(unsubProducts);
 
   // Real-time orders
-  unsubOrders = onSnapshot(collection(db, 'orders'), snap => {
+  const unsubOrders = onSnapshot(collection(db, 'orders'), snap => {
     const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     document.getElementById('statOrders').textContent = orders.length;
     const revenue = orders.reduce((s, o) => s + (o.total || 0), 0);
@@ -124,11 +129,10 @@ function initDashboard(unsubProducts, unsubOrders) {
       });
     });
   });
+  unsubscribes.push(unsubOrders);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  let unsubProducts, unsubOrders;
-
   onAuthStateChanged(auth, async user => {
     if (!user) {
       window.location.href = '/login.html';
@@ -139,6 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = '/index.html';
       return;
     }
-    initDashboard(unsubProducts, unsubOrders);
+    initDashboard();
   });
 });
