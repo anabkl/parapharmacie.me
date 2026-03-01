@@ -1,0 +1,37 @@
+body { 
+    font-family: Arial, sans-serif; 
+    margin: 0; 
+    padding: 20px; 
+    background: #f9f9f9; 
+}
+
+header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    border-bottom: 2px solid #0a7a5f;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+nav a { 
+    margin-right: 15px; 
+    text-decoration: none; 
+    color: #0a7a5f;
+    font-weight: bold;
+}
+
+.grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+    gap: 20px; 
+}
+
+/* Basic card styling for later */
+.product-card {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
+}

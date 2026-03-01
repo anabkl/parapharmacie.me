@@ -1,13 +1,36 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>parapharmacie-me</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="Parapharmacie Maroc - Produits authentiques et livraison rapide" />
+  <meta property="og:title" content="Parapharmacie.me" />
+  <meta property="og:description" content="Votre parapharmacie en ligne au Maroc" />
+  <meta property="og:url" content="https://parapharmacie.me" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parapharmacie.me</title>
+  <link rel="stylesheet" href="/src/css/main.css" />
+</head>
+<body>
+  <header>
+    <h1>Parapharmacie.me</h1>
+    <nav>
+      <a href="/src/pages/index.html">Accueil</a>
+      <a href="/src/pages/cart.html">Panier</a>
+      <a href="/src/pages/login.html">Compte</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <input id="searchInput" placeholder="Rechercher un produit..." />
+      <select id="categoryFilter">
+        <option value="">Toutes catégories</option>
+      </select>
+    </section>
+
+    <section id="productsGrid" class="grid"></section>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
 </html>

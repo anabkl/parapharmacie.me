@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin</title>
+  <link rel="stylesheet" href="/src/css/main.css" />
+</head>
+<body>
+  <main>
+    <h2>Admin Dashboard</h2>
+
+    <section class="stats">
+      <div>Total Revenue: <span id="totalRevenue">0</span> MAD</div>
+    </section>
+
+    <section>
+      <canvas id="salesChart"></canvas>
+      <canvas id="ordersChart"></canvas>
+    </section>
+
+    <section>
+      <h3>Produits</h3>
+      <form id="productForm">
+        <input name="title" placeholder="Nom produit" required />
+        <input name="price" type="number" placeholder="Prix" required />
+        <input name="category" placeholder="Catégorie" required />
+        <input name="image" type="file" required />
+        <button type="submit">Ajouter</button>
+      </form>
+      <div id="adminProducts"></div>
+    </section>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

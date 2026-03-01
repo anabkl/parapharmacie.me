@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout</title>
+  <link rel="stylesheet" href="/src/css/main.css" />
+</head>
+<body>
+  <main>
+    <h2>Finaliser la commande</h2>
+    <form id="checkoutForm">
+      <input name="fullname" placeholder="Nom complet" required />
+      <input name="phone" placeholder="Téléphone" required />
+      <input name="address" placeholder="Adresse" required />
+      <select name="payment">
+        <option value="cod">Paiement à la livraison</option>
+        <option value="stripe">Stripe Test</option>
+      </select>
+      <button type="submit">Commander</button>
+    </form>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
