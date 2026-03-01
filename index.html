@@ -1,13 +1,102 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/public/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>parapharmacie-me</title>
+    <meta name="description" content="Parapharmacie.me – Pharmacie Tawfiq, Khouribga. Achetez vos produits parapharmacie en ligne." />
+    <title>Parapharmacie.me – Pharmacie Tawfiq</title>
   </head>
   <body>
-    <div id="app"></div>
+    <header>
+      <div class="nav-container">
+        <a href="/index.html" class="brand">Parapharmacie<span>.me</span></a>
+        <nav>
+          <ul>
+            <li><a href="/index.html">Accueil</a></li>
+            <li><a href="/shop.html">Boutique</a></li>
+            <li><a href="/cart.html" class="cart-icon">🛒 Panier</a></li>
+            <li><a href="/login.html">Compte</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>Votre pharmacie en ligne</h1>
+        <p>PHARMACIE TAWFIQ – Khouribga. Produits de santé, beauté et bien-être livrés chez vous.</p>
+        <div class="hero-actions">
+          <a href="/shop.html" class="btn">Voir la boutique</a>
+          <a href="/cart.html" class="btn btn-outline">Mon panier</a>
+        </div>
+      </section>
+
+      <section class="section section-dark">
+        <div class="container">
+          <h2 class="section-title">Pourquoi nous choisir ?</h2>
+          <p class="section-subtitle">Des produits de qualité au meilleur prix</p>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">🚚</div>
+              <h3>Livraison rapide</h3>
+              <p>Livraison à domicile dans tout le Maroc</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">💊</div>
+              <h3>Produits certifiés</h3>
+              <p>Tous nos produits sont certifiés et de qualité</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">💳</div>
+              <h3>Paiement sécurisé</h3>
+              <p>Paiement à la livraison disponible</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📞</div>
+              <h3>Support client</h3>
+              <p>Notre équipe est disponible pour vous aider</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <h2 class="section-title">Nos produits</h2>
+          <p class="section-subtitle">Découvrez notre sélection de produits parapharmacie</p>
+          <a href="/shop.html" class="btn">Voir tous les produits</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-grid">
+        <div>
+          <h4>Parapharmacie.me</h4>
+          <p>Votre pharmacie en ligne de confiance au Maroc.</p>
+        </div>
+        <div>
+          <h4>Navigation</h4>
+          <p><a href="/index.html">Accueil</a></p>
+          <p><a href="/shop.html">Boutique</a></p>
+          <p><a href="/cart.html">Panier</a></p>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <address>
+            251 ANCIENNE MÉDINA DU SÉCHAGE<br />
+            25010 Khouribga, Morocco<br />
+            <a href="tel:0520828417">0520-828417</a><br />
+            <a href="mailto:hamidkaram554@gmail.com">hamidkaram554@gmail.com</a>
+          </address>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2024 PHARMACIE TAWFIQ – Tous droits réservés</p>
+      </div>
+    </footer>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

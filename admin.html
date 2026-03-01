@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Parapharmacie.me</title>
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <a href="/index.html" class="brand">Parapharmacie<span style="color:#94a3b8">.me</span></a>
+        <nav>
+          <ul>
+            <li><a href="#dashboard" class="active" data-section="dashboard">📊 Dashboard</a></li>
+            <li><a href="#products" data-section="products">💊 Produits</a></li>
+            <li><a href="#orders" data-section="orders">📦 Commandes</a></li>
+            <li><a href="#" id="logoutBtn" class="logout">🚪 Déconnexion</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <!-- Dashboard Section -->
+        <div id="section-dashboard">
+          <div class="admin-header">
+            <h1>Dashboard</h1>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div id="statOrders" class="stat-value">–</div>
+              <div class="stat-label">Commandes</div>
+            </div>
+            <div class="stat-card">
+              <div id="statRevenue" class="stat-value">–</div>
+              <div class="stat-label">Revenu total (MAD)</div>
+            </div>
+            <div class="stat-card">
+              <div id="statProducts" class="stat-value">–</div>
+              <div class="stat-label">Produits</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Products Section -->
+        <div id="section-products" style="display:none">
+          <div class="admin-header">
+            <h1>Produits</h1>
+          </div>
+          <div class="admin-section">
+            <h2>Ajouter un produit</h2>
+            <div class="form-card" style="max-width:100%">
+              <div id="productFormMsg" class="success-msg" style="display:none"></div>
+              <form id="addProductForm">
+                <div class="form-group">
+                  <label>Titre *</label>
+                  <input type="text" id="prodTitle" required />
+                </div>
+                <div class="form-group">
+                  <label>Prix (MAD) *</label>
+                  <input type="number" id="prodPrice" required min="0" step="0.01" />
+                </div>
+                <div class="form-group">
+                  <label>Catégorie *</label>
+                  <input type="text" id="prodCategory" required placeholder="ex: Soin, Hygiène…" />
+                </div>
+                <div class="form-group">
+                  <label>Stock</label>
+                  <input type="number" id="prodStock" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                  <label>Description</label>
+                  <textarea id="prodDesc"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Image *</label>
+                  <input type="file" id="prodImage" accept="image/*" required />
+                </div>
+                <button type="submit" class="btn">Ajouter le produit</button>
+              </form>
+            </div>
+          </div>
+          <div class="admin-section">
+            <h2>Liste des produits</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Image</th>
+                    <th>Titre</th>
+                    <th>Catégorie</th>
+                    <th>Prix</th>
+                    <th>Stock</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="productsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Section -->
+        <div id="section-orders" style="display:none">
+          <div class="admin-header">
+            <h1>Commandes</h1>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Client</th>
+                  <th>Téléphone</th>
+                  <th>Total</th>
+                  <th>Statut</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/src/js/admin-page.js"></script>
+  </body>
+</html>
