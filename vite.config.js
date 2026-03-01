@@ -7,6 +7,12 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
+        shop: 'shop.html',
+        cart: 'cart.html',
+        checkout: 'checkout.html',
+        login: 'login.html',
+        admin: 'admin.html',
+        product: 'product.html',
       }
     }
   }
