@@ -1,3 +1,2812 @@
+@Infos-MacBook-Pro ~ % npm create vite@latest parapharmacie-me -- --template vanilla
+
+> npx
+> create-vite parapharmacie-me --template vanilla
+
+│
+◇  Use Vite 8 beta (Experimental)?:
+│  No
+│
+◇  Install with npm and start now?
+│  Yes
+│
+◇  Scaffolding project in /Users/info/parapharmacie-me...
+│
+◇  Installing dependencies with npm...
+
+added 13 packages, and audited 14 packages in 30s
+
+5 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+│
+◇  Starting dev server...
+
+> parapharmacie-me@0.0.0 dev
+> vite
+
+
+  VITE v7.3.1  ready in 524 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help
+^C
+@Infos-MacBook-Pro ~ % cd parapharmacie-me
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install
+
+added 1 package, and audited 15 packages in 2s
+
+5 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install firebase stripe @stripe/stripe-js chart.js emailjs-com
+npm warn deprecated emailjs-com@3.2.0: The SDK name changed to @emailjs/browser
+
+added 91 packages, and audited 106 packages in 5m
+
+8 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+@Infos-MacBook-Pro ~/parapharmacie-me % mkdir -p public src/assets src/css src/js src/pages
+
+touch public/manifest.json public/robots.txt public/sitemap.xml
+
+touch src/css/main.css
+
+touch src/js/app.js src/js/auth.js src/js/cart.js src/js/products.js src/js/orders.js src/js/admin.js src/js/analytics.js src/js/monitoring.js src/js/firebase.js src/js/email.js src/js/pwa.js
+
+touch src/pages/index.html src/pages/product.html src/pages/cart.html src/pages/checkout.html src/pages/login.html src/pages/admin.html
+
+touch src/main.js .env vite.config.js README.md
+@Infos-MacBook-Pro ~/parapharmacie-me % ls
+README.md		node_modules		package.json		src
+index.html		package-lock.json	public			vite.config.js
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > .env
+VITE_FIREBASE_API_KEY=AIzaSyCt_PuXI3zCBMMXKxFsw_TwHNsOfHmR-JM
+VITE_FIREBASE_AUTH_DOMAIN=parashop-tawfiq-v2.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=parashop-tawfiq-v2
+VITE_FIREBASE_STORAGE_BUCKET=parashop-tawfiq-v2.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=302319610301
+VITE_FIREBASE_APP_ID=1:302319610301:web:b5bd9050ac5da6a7eb0ad4
+VITE_STRIPE_PUBLISHABLE_KEY=YOUR_STRIPE_TEST_KEY
+VITE_EMAILJS_SERVICE_ID=YOUR_SERVICE
+VITE_EMAILJS_TEMPLATE_ID=YOUR_TEMPLATE
+VITE_EMAILJS_PUBLIC_KEY=YOUR_PUBLIC
+VITE_SENTRY_DSN=YOUR_SENTRY_DSN
+VITE_SIMPLEANALYTICS_DOMAIN=parapharmacie.me
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/firebase.js
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+export const functions = getFunctions(app);
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/auth.js
+import { auth, db } from "./firebase";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+
+export async function register(email, password) {
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export async function login(email, password) {
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
+export async function logout() {
+  return signOut(auth);
+}
+
+export async function isAdmin(uid) {
+  const snap = await getDoc(doc(db, "roles", uid));
+  return snap.exists() && snap.data().role === "admin";
+}
+
+export function authWatcher(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % nano src/js/auth.js
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/products.js
+import { db, storage } from "./firebase";
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+export async function getProducts() {
+  const q = query(collection(db, "products"));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function addProduct(data, file) {
+  const imgRef = ref(storage, `products/${Date.now()}_${file.name}`);
+  await uploadBytes(imgRef, file);
+  const url = await getDownloadURL(imgRef);
+  return addDoc(collection(db, "products"), { ...data, image: url });
+}
+
+export async function updateProduct(id, data) {
+  return updateDoc(doc(db, "products", id), data);
+}
+
+export async function deleteProduct(id) {
+  return deleteDoc(doc(db, "products", id));
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/cart.js
+const CART_KEY = "parapharmacie_cart";
+
+export function getCart() {
+  return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+}
+
+export function saveCart(cart) {
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+}
+
+export function addToCart(product, qty = 1) {
+  const cart = getCart();
+  const item = cart.find(i => i.id === product.id);
+  if (item) item.qty += qty;
+  else cart.push({ ...product, qty });
+  saveCart(cart);
+}
+
+export function updateQty(id, qty) {
+  const cart = getCart().map(i => i.id === id ? { ...i, qty } : i);
+  saveCart(cart);
+}
+
+export function cartTotal() {
+  return getCart().reduce((sum, i) => sum + i.price * i.qty, 0);
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/orders.js
+import { db } from "./firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { loadStripe } from "@stripe/stripe-js";
+
+export async function createOrder(data) {
+  return addDoc(collection(db, "orders"), { ...data, createdAt: serverTimestamp() });
+}
+
+export async function stripeCheckout(sessionId) {
+  const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+  return stripe.redirectToCheckout({ sessionId });
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/email.js
+import emailjs from "emailjs-com";
+
+export function sendOrderEmail(data) {
+  return emailjs.send(
+    import.meta.env.VITE_EMAILJS_SERVICE_ID,
+    import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+    data,
+    import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+  );
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/monitoring.js
+import { db } from "./firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import * as Sentry from "@sentry/browser";
+
+Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
+
+export async function logError(error, context = {}) {
+  await addDoc(collection(db, "errors"), {
+    message: error.message,
+    stack: error.stack,
+    context,
+    createdAt: serverTimestamp()
+  });
+  Sentry.captureException(error);
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > public/manifest.json
+{
+  "name": "Parapharmacie.me",
+  "short_name": "Parapharmacie",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a7a5f",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/pwa.js
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js");
+  });
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > public/service-worker.js
+self.addEventListener("install", e => self.skipWaiting());
+self.addEventListener("fetch", () => {});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > public/robots.txt
+User-agent: *
+Allow: /
+Sitemap: https://parapharmacie.me/sitemap.xml
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > public/sitemap.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://parapharmacie.me/</loc></url>
+  <url><loc>https://parapharmacie.me/cart</loc></url>
+  <url><loc>https://parapharmacie.me/checkout</loc></url>
+</urlset>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /products/{id} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == "admin";
+    }
+
+    match /orders/{id} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == "admin"
+      );
+    }
+
+    match /errors/{id} {
+      allow create: if true;
+      allow read: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == "admin";
+    }
+
+    match /roles/{id} {
+      allow read: if request.auth != null && request.auth.uid == id;
+      allow write: if false;
+    }
+  }
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install -g firebase-tools
+npm error code EACCES
+npm error syscall mkdir
+npm error path /usr/local/lib/node_modules/firebase-tools
+npm error errno -13
+npm error Error: EACCES: permission denied, mkdir '/usr/local/lib/node_modules/firebase-tools'
+npm error     at async mkdir (node:internal/fs/promises:858:10)
+npm error     at async /usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:624:20
+npm error     at async Promise.allSettled (index 0)
+npm error     at async [reifyPackages] (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:325:11)
+npm error     at async Arborist.reify (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:142:5)
+npm error     at async Install.exec (/usr/local/lib/node_modules/npm/lib/commands/install.js:150:5)
+npm error     at async Npm.exec (/usr/local/lib/node_modules/npm/lib/npm.js:207:9)
+npm error     at async module.exports (/usr/local/lib/node_modules/npm/lib/cli/entry.js:74:5) {
+npm error   errno: -13,
+npm error   code: 'EACCES',
+npm error   syscall: 'mkdir',
+npm error   path: '/usr/local/lib/node_modules/firebase-tools'
+npm error }
+npm error
+npm error The operation was rejected by your operating system.
+npm error It is likely you do not have the permissions to access this file as the current user
+npm error
+npm error If you believe this might be a permissions issue, please double-check the
+npm error permissions of the file and its containing directories, or try running
+npm error the command again as root/Administrator.
+npm error A complete log of this run can be found in: /Users/info/.npm/_logs/2026-02-28T18_13_24_327Z-debug-0.log
+@Infos-MacBook-Pro ~/parapharmacie-me % sudo npm install -g firebase-tools
+Password:
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm warn deprecated json-ptr@3.1.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 744 packages in 51s
+
+93 packages are looking for funding
+  run `npm fund` for details
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase login
+i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data
+✔ Enable Gemini in Firebase features? Yes
+
+i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.
+✔ Allow Firebase to collect CLI and Emulator Suite usage and error reporting information? Yes
+
+i  To change your preferences at any time, run `firebase logout` and `firebase login` again.
+
+Visit this URL on this device to log in:
+https://accounts.google.com/o/oauth2/auth?client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com&scope=email%20openid%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloudplatformprojects.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Ffirebase%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&response_type=code&state=645665502&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+
+Waiting for authentication...
+
+✔  Success! Logged in as lahraouianas16@gmail.com
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase init hosting
+
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/info/parapharmacie-me
+
+
+=== Project Setup
+
+First, let's associate this project directory with a Firebase project.
+You can create multiple project aliases by running firebase use --add, 
+
+✔ Please select an option: Use an existing project
+✔ Select a default Firebase project for this directory: parashop-tawfiq-v2 (parashop-tawfiq-v2)
+
+=== Hosting Setup
+
+Your public directory is the folder (relative to your project directory) that
+will contain Hosting assets to be uploaded with firebase deploy. If you
+have a build process for your assets, use your build's output directory.
+
+✔ What do you want to use as your public directory? dist
+✔ Configure as a single-page app (rewrite all urls to /index.html)? Yes
+✔ Set up automatic builds and deploys with GitHub? Yes
+
+i  Didn't detect a .git folder. Assuming /Users/info/parapharmacie-me is the project root.
+i  Authorizing with GitHub to upload your service account to a GitHub repository's secrets store.
+
+Visit this URL on this device to log in:
+https://github.com/login/oauth/authorize?client_id=89cf50f02ac6aaed3484&state=755297702&redirect_uri=http%3A%2F%2Flocalhost%3A9005&scope=read%3Auser%20repo%20public_repo
+
+Waiting for authentication...
+
+✔  Success! Logged into GitHub as anabkl
+
+⠋ For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository) y
+
+⚠  The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?
+
+i  Action required: Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:
+https://github.com/settings/connections/applications/89cf50f02ac6aaed3484
+
+⠋ For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository) y
+> You must provide a valid value
+⚠  The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?
+
+i  Action required: Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:
+https://github.com/settings/connections/applications/89cf50f02ac6aaed3484
+⠙ For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository) anabkl/parapharmacie-me
+
+⚠  The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?
+
+i  Action required: Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:
+https://github.com/settings/connections/applications/89cf50f02ac6aaed3484
+
+✔ For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository) anabkl/parapharmacie.me
+
+✔  Created service account github-action-1164313239 with Firebase Hosting admin permissions.
+✔  Uploaded service account JSON to GitHub as secret FIREBASE_SERVICE_ACCOUNT_PARASHOP_TAWFIQ_V2.
+i  You can manage your secrets at https://github.com/anabkl/parapharmacie.me/settings/secrets.
+
+✔ Set up the workflow to run a build script before every deploy? Yes
+✔ What script should be run before every deploy? npm ci && npm run build
+
+✔  Created workflow file /Users/info/parapharmacie-me/.github/workflows/firebase-hosting-pull-request.yml
+✔ Set up automatic deployment to your site's live channel when a PR is merged? Yes
+✔ What is the name of the GitHub branch associated with your site's live channel? main
+
+✔  Created workflow file /Users/info/parapharmacie-me/.github/workflows/firebase-hosting-merge.yml
+
+i  Action required: Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:
+https://github.com/settings/connections/applications/89cf50f02ac6aaed3484
+i  Action required: Push any new workflow file(s) to your repo
+✔  Wrote dist/index.html
+
+✔  Wrote configuration info to firebase.json
+✔  Wrote project information to .firebaserc
+
+✔  Firebase initialization complete!
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+failed to load config from /Users/info/parapharmacie-me/vite.config.js
+error during build:
+Error: config must export or return an object.
+    at loadConfigFromFile (file:///Users/info/parapharmacie-me/node_modules/vite/dist/node/chunks/config.js:35767:34)
+    at async resolveConfig (file:///Users/info/parapharmacie-me/node_modules/vite/dist/node/chunks/config.js:35413:22)
+    at async createBuilder (file:///Users/info/parapharmacie-me/node_modules/vite/dist/node/chunks/config.js:33875:19)
+    at async CAC.<anonymous> (file:///Users/info/parapharmacie-me/node_modules/vite/dist/node/cli.js:629:10)
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > vite.config.js
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  root: './',
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+      }
+    }
+  }
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build                
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+✓ 7 modules transformed.
+dist/index.html                0.46 kB │ gzip: 0.30 kB
+dist/assets/main-XlyKSLnJ.css  1.20 kB │ gzip: 0.62 kB
+dist/assets/main-DOzXLXE_.js   2.58 kB │ gzip: 1.40 kB
+✓ built in 89ms
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase deploy
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying hosting
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 8 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run dev
+
+> parapharmacie-me@0.0.0 dev
+> vite
+
+6:27:30 PM [vite] (client) Re-optimizing dependencies because lockfile has changed
+
+  VITE v7.3.1  ready in 281 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help
+^C
+@Infos-MacBook-Pro ~/parapharmacie-me % http://localhost:5173/
+zsh: no such file or directory: http://localhost:5173/
+@Infos-MacBook-Pro ~/parapharmacie-me % git add .
+git commit -m "Setup project, Firebase, and Vite"
+git push origin main
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+@Infos-MacBook-Pro ~/parapharmacie-me % git init
+git branch -M main
+git remote add origin https://github.com/anabkl/parapharmacie.me.git
+git add .
+git commit -m "Initial setup with Firebase and Vite"
+git push -u origin main
+Initialized empty Git repository in /Users/info/parapharmacie-me/.git/
+[main (root-commit) 952b515] Initial setup with Firebase and Vite
+ 40 files changed, 2683 insertions(+)
+ create mode 100644 .env
+ create mode 100644 .firebase/hosting.ZGlzdA.cache
+ create mode 100644 .firebaserc
+ create mode 100644 .github/workflows/firebase-hosting-merge.yml
+ create mode 100644 .github/workflows/firebase-hosting-pull-request.yml
+ create mode 100644 .gitignore
+ create mode 100644 README.md
+ create mode 100644 firebase.json
+ create mode 100644 firestore.rules
+ create mode 100644 index.html
+ create mode 100644 package-lock.json
+ create mode 100644 package.json
+ create mode 100644 public/manifest.json
+ create mode 100644 public/robots.txt
+ create mode 100644 public/service-worker.js
+ create mode 100644 public/sitemap.xml
+ create mode 100644 public/vite.svg
+ create mode 100644 src/counter.js
+ create mode 100644 src/css/main.css
+ create mode 100644 src/javascript.svg
+ create mode 100644 src/js/admin.js
+ create mode 100644 src/js/analytics.js
+ create mode 100644 src/js/app.js
+ create mode 100644 src/js/auth.js
+ create mode 100644 src/js/cart.js
+ create mode 100644 src/js/email.js
+ create mode 100644 src/js/firebase.js
+ create mode 100644 src/js/monitoring.js
+ create mode 100644 src/js/orders.js
+ create mode 100644 src/js/products.js
+ create mode 100644 src/js/pwa.js
+ create mode 100644 src/main.js
+ create mode 100644 src/pages/admin.html
+ create mode 100644 src/pages/cart.html
+ create mode 100644 src/pages/checkout.html
+ create mode 100644 src/pages/index.html
+ create mode 100644 src/pages/login.html
+ create mode 100644 src/pages/product.html
+ create mode 100644 src/style.css
+ create mode 100644 vite.config.js
+To https://github.com/anabkl/parapharmacie.me.git
+ ! [rejected]        main -> main (fetch first)
+error: failed to push some refs to 'https://github.com/anabkl/parapharmacie.me.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+@Infos-MacBook-Pro ~/parapharmacie-me % git push -f origin main
+Enumerating objects: 40, done.
+Counting objects: 100% (40/40), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (36/36), done.
+Writing objects: 100% (40/40), 26.05 KiB | 5.21 MiB/s, done.
+Total 40 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (1/1), done.
+To https://github.com/anabkl/parapharmacie.me.git
+ + 5437689...952b515 main -> main (forced update)
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+
+cat << 'EOF' > src/pages/admin.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin</title>
+  <link rel="stylesheet" href="/src/css/main.css" />
+</head>
+<body>
+  <main>
+    <h2>Admin Dashboard</h2>
+
+    <section class="stats">
+      <div>Total Revenue: <span id="totalRevenue">0</span> MAD</div>
+    </section>
+
+    <section>
+      <canvas id="salesChart"></canvas>
+      <canvas id="ordersChart"></canvas>
+    </section>
+
+    <section>
+      <h3>Produits</h3>
+      <form id="productForm">
+        <input name="title" placeholder="Nom produit" required />
+        <input name="price" type="number" placeholder="Prix" required />
+        <input name="category" placeholder="Catégorie" required />
+        <input name="image" type="file" required />
+        <button type="submit">Ajouter</button>
+      </form>
+      <div id="adminProducts"></div>
+    </section>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cp src/pages/index.html index.html
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install chart.js
+
+up to date, audited 106 packages in 1s
+
+8 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+  const ordersCanvas = document.getElementById("ordersChart");
+  if (!salesCanvas || !ordersCanvas) return;
+
+  const snap = await getDocs(collection(db, "orders"));
+  const orders = snap.docs.map(d => d.data());
+
+  const salesPerDay = {};
+  let totalRevenue = 0;
+
+  orders.forEach(o => {
+    const day = o.createdAt?.toDate().toISOString().split("T")[0];
+    salesPerDay[day] = (salesPerDay[day] || 0) + o.total;
+    totalRevenue += o.total || 0;
+  });
+
+  document.getElementById("totalRevenue").textContent = totalRevenue;
+
+  new Chart(salesCanvas, {
+    type: "line",
+    data: {
+      labels: Object.keys(salesPerDay),
+      datasets: [{ label: "Ventes", data: Object.values(salesPerDay) }]
+    }
+  });
+
+  const statusCount = orders.reduce((acc, o) => {
+    acc[o.status || "pending"] = (acc[o.status || "pending"] || 0) + 1;
+    return acc;
+  }, {});
+
+  new Chart(ordersCanvas, {
+    type: "pie",
+    data: {
+      labels: Object.keys(statusCount),
+      datasets: [{ data: Object.values(statusCount) }]
+    }
+  });
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % mkdir -p functions
+
+cat << 'EOF' > functions/package.json
+{
+  "name": "functions",
+  "description": "Cloud Functions for Parapharmacie.me",
+  "main": "index.js",
+  "engines": {
+    "node": "18"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.8.0",
+    "firebase-functions": "^4.3.1",
+    "stripe": "^14.0.0"
+  }
+}
+EOF
+
+# Navigate into the folder, install, and come back to the root
+cd functions
+npm install
+cd ..
+zsh: command not found: #
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: undefined,
+npm warn EBADENGINE   required: { node: '18' },
+npm warn EBADENGINE   current: { node: 'v22.18.0', npm: '10.9.3' }
+npm warn EBADENGINE }
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@8.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated google-p12-pem@4.0.1: Package is no longer maintained
+
+added 291 packages, and audited 292 packages in 26s
+
+36 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (2 low, 4 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > functions/index.js
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const stripe = require("stripe")(functions.config().stripe.secret_key);
+
+admin.initializeApp();
+
+exports.createStripeSession = functions.https.onCall(async (data, context) => {
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card"],
+    line_items: data.items.map(item => ({
+      price_data: {
+        currency: "mad",
+        product_data: { name: item.title },
+        unit_amount: item.price * 100
+      },
+      quantity: item.qty
+    })),
+    success_url: data.successUrl,
+    cancel_url: data.cancelUrl
+  });
+
+  return { sessionId: session.id };
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/main.js
+import "./css/main.css";
+import { renderAdminProducts, adminCharts } from "./js/admin";
+
+document.addEventListener("DOMContentLoaded", () => {
+  renderAdminProducts();
+  adminCharts();
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/css/main.css
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f9f9f9;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #0a7a5f;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+nav a {
+    margin-right: 15px;
+    text-decoration: none;
+    color: #0a7a5f;
+    font-weight: bold;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+/* Basic card styling for later */
+.product-card {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build
+firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+✓ 31 modules transformed.
+dist/index.html                  1.17 kB │ gzip:   0.56 kB
+dist/assets/main-CeBhkCGF.css    0.49 kB │ gzip:   0.32 kB
+dist/assets/main-CWoa1EuZ.js   554.28 kB │ gzip: 179.35 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.40s
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying hosting
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 8 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install firebase
+
+up to date, audited 106 packages in 2s
+
+8 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/js/firebase.js
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
+
+const firebaseConfig = {
+  apiKey: "TON_API_KEY",
+  authDomain: "parashop-tawfiq-v2.firebaseapp.com",
+  projectId: "parashop-tawfiq-v2",
+  storageBucket: "parashop-tawfiq-v2.firebasestorage.app",
+  messagingSenderId: "TON_ID",
+  appId: "TON_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > firebase.json
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "redirects": [
+      {
+        "source": "/(.*)",
+        "destination": "https://parapharmacie.me/$1",
+        "type": 301
+      }
+    ]
+  }
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase deploy --only hosting
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying hosting
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 8 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build
+firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+✓ 29 modules transformed.
+dist/index.html                  1.17 kB │ gzip:   0.56 kB
+dist/assets/main-CeBhkCGF.css    0.49 kB │ gzip:   0.32 kB
+dist/assets/main-CXyBFiO8.js   551.70 kB │ gzip: 178.49 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.39s
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying hosting
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 8 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > firebase.json
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+EOF
+firebase deploy --only hosting
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying hosting
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 8 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % mkdir -p .github/workflows
+# (Colle ton code v2 dans le fichier .github/workflows/deploy.yml)
+zsh: unknown file attribute: C
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase deploy --only firestore:rules
+
+Error: Cannot understand what targets to deploy/serve. No targets in firebase.json match '--only firestore:rules'.
+@Infos-MacBook-Pro ~/parapharmacie-me % function isAdmin() {
+  return isSignedIn() &&
+    get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == "admin";
+}
+zsh: parse error near `&&'
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > firebase.json
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == "admin";
+    }
+
+    match /products/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() &&
+        request.resource.data.keys().hasOnly(["title","description","price","category","image","active","createdAt","updatedAt"]) &&
+        request.resource.data.title is string &&
+        request.resource.data.description is string &&
+        request.resource.data.category is string &&
+        request.resource.data.image is string &&
+        request.resource.data.active is bool &&
+        request.resource.data.price is number &&
+        request.resource.data.price > 0;
+    }
+
+    match /orders/{id} {
+      allow create: if false;
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow update: if isAdmin() && request.resource.data.keys().hasOnly(["status","tracking","updatedAt","userId","items","total","createdAt","payment","address","phone","fullname"]);
+      allow delete: if false;
+    }
+
+    match /errors/{id} {
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /roles/{id} {
+      allow read: if isSignedIn() && request.auth.uid == id;
+      allow write: if false;
+    }
+  }
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase deploy --only firestore:rules
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying firestore
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+✔  firestore: required API firestore.googleapis.com is enabled
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: Creating the new Firestore database (default)...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: uploading rules firestore.rules...
+✔  firestore: released rules firestore.rules to cloud.firestore
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_EMAILJS_SERVICE_ID: ${{ secrets.VITE_EMAILJS_SERVICE_ID }}
+          VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_SIMPLEANALYTICS_DOMAIN: ${{ secrets.VITE_SIMPLEANALYTICS_DOMAIN }}
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PARASHOP_TAWFIQ_V2 }}
+zsh: bad substitution
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_EMAILJS_SERVICE_ID: ${{ secrets.VITE_EMAILJS_SERVICE_ID }}
+          VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_SIMPLEANALYTICS_DOMAIN: ${{ secrets.VITE_SIMPLEANALYTICS_DOMAIN }}
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PARASHOP_TAWFIQ_V2 }}
+          channelId: live
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % npm i -D vite-plugin-imagemin
+npm install @sentry/browser
+npm error code EEXIST
+npm error syscall rename
+npm error path /Users/info/.npm/_cacache/tmp/7247f2bc
+npm error dest /Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d
+npm error errno EEXIST
+npm error Invalid response body while trying to fetch https://registry.npmjs.org/@types%2fsvgo: EACCES: permission denied, rename '/Users/info/.npm/_cacache/tmp/7247f2bc' -> '/Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d'
+npm error File exists: /Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d
+npm error Remove the existing file and try again, or run npm
+npm error with --force to overwrite files recklessly.
+npm error A complete log of this run can be found in: /Users/info/.npm/_logs/2026-03-01T13_13_30_258Z-debug-0.log
+
+added 6 packages, and audited 112 packages in 6s
+
+8 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+    platform: navigator.platform,
+    screen: `${screen.width}x${screen.height}`,
+  };
+}
+
+async function writeError(payload) {
+  await addDoc(collection(db, "errors"), {
+    ...payload,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function logError(error, context = {}) {
+  const user = auth.currentUser;
+  const payload = {
+    message: error?.message || "unknown",
+    stack: error?.stack || "",
+    route: location.pathname,
+    userId: user?.uid || null,
+    device: getDeviceInfo(),
+    context,
+    severity: context.severity || "error"
+  };
+
+  await writeError(payload);
+
+  if (context.severity === "critical") {
+    Sentry.captureException(error);
+  }
+}
+
+window.addEventListener("error", (e) => {
+  logError(e.error || new Error(e.message), { severity: "critical", type: "window.error" });
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  logError(e.reason || new Error("Unhandled promise"), { severity: "critical", type: "unhandledrejection" });
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > vite.config.js
+import { defineConfig } from "vite";
+import viteImagemin from "vite-plugin-imagemin";
+
+export default defineConfig({
+  build: {
+    target: "es2019",
+    minify: "esbuild",
+    sourcemap: false,
+    assetsInlineLimit: 4096,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore", "firebase/storage"],
+          charts: ["chart.js/auto"],
+          stripe: ["@stripe/stripe-js"]
+        }
+      }
+    }
+  },
+  plugins: [
+    viteImagemin({
+      mozjpeg: { quality: 75 },
+      pngquant: { quality: [0.7, 0.85] },
+      webp: { quality: 75 }
+    })
+  ]
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > firebase.json
+{
+  "hosting": {
+    "public": "dist",
+    "cleanUrls": true,
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "redirects": [
+      {
+        "source": "https://www.parapharmacie.me/**",
+        "destination": "https://parapharmacie.me/$1",
+        "type": 301
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }]
+      },
+      {
+        "source": "**/*.@(png|jpg|jpeg|webp|svg|ico)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=0,must-revalidate" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > src/pages/index.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="Parapharmacie Maroc - Produits authentiques et livraison rapide" />
+  <meta property="og:title" content="Parapharmacie.me" />
+  <meta property="og:description" content="Votre parapharmacie en ligne au Maroc" />
+  <meta property="og:url" content="https://parapharmacie.me" />
+  <link rel="canonical" href="https://parapharmacie.me/" />
+  <link rel="prefetch" href="/cart.html" />
+  <link rel="prefetch" href="/checkout.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parapharmacie.me</title>
+  <link rel="stylesheet" href="/src/css/main.css" />
+</head>
+<body>
+  <header>
+    <h1>Parapharmacie.me</h1>
+    <nav>
+      <a href="/index.html">Accueil</a>
+      <a href="/cart.html">Panier</a>
+      <a href="/login.html">Compte</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <input id="searchInput" placeholder="Rechercher un produit..." />
+      <select id="categoryFilter">
+        <option value="">Toutes catégories</option>
+      </select>
+    </section>
+
+    <section id="productsGrid" class="grid"></section>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+heredoc> cat << 'EOF' > src/pages/product.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="Produit parapharmacie" />
+  <meta property="og:title" content="Produit - Parapharmacie.me" />
+  <meta property="og:description" content="Achetez votre produit en ligne" />
+  <meta property="og:url" content="https://parapharmacie.me/product" />
+  <link rel="canonical" href="https://parapharmacie.me/product" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Produit</title>
+  <link rel="stylesheet" href="/src/css/main.css" />
+</head>
+<body>
+  <main id="productDetail"></main>
+  <script type="module" src="/src/js/product-page.js"></script>
+</body>
+</html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+  let script = document.getElementById("jsonld-product");
+  if (!script) {
+    script = document.createElement("script");
+    script.id = "jsonld-product";
+    script.type = "application/ld+json";
+    document.head.appendChild(script);
+  }
+  script.textContent = JSON.stringify(data);
+}
+
+async function loadProduct() {
+  const id = new URLSearchParams(location.search).get("id");
+  if (!id) return;
+
+  const snap = await getDoc(doc(db, "products", id));
+  if (!snap.exists()) return;
+  const product = snap.data();
+
+  document.title = `${product.title} | Parapharmacie.me`;
+
+  setMetaTag("description", product.description);
+  setMetaTag("og:title", product.title, true);
+  setMetaTag("og:description", product.description, true);
+  setMetaTag("og:image", product.image, true);
+  setMetaTag("og:url", location.href, true);
+
+  setCanonical(location.href);
+  injectJSONLD(product);
+
+  document.getElementById("productDetail").innerHTML = `
+    <h1>${product.title}</h1>
+    <img src="${product.image}" alt="${product.title}" loading="lazy" />
+    <p>${product.description}</p>
+    <strong>${product.price} MAD</strong>
+  `;
+}
+
+loadProduct();
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % mkdir -p public
+cat << 'EOF' > public/404.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>404 - Page introuvable</title>
+  <meta name="robots" content="noindex" />
+</head>
+<body>
+  <h1>404 - Page introuvable</h1>
+  <p>Retour à <a href="/">l’accueil</a></p>
+</body>
+</html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > .github/workflows/backup.yml
+name: Firestore Backup
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # Tous les jours 02:00 UTC
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud config set project ${{ secrets.FIREBASE_PROJECT_ID }}
+      - run: gcloud firestore export gs://${{ secrets.FIREBASE_PROJECT_ID }}.appspot.com/backups
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % gcloud config set project parashop-tawfiq-v2
+gcloud firestore export gs://parashop-tawfiq-v2.appspot.com/backups
+zsh: command not found: gcloud
+zsh: command not found: gcloud
+@Infos-MacBook-Pro ~/parapharmacie-me % git add .
+git commit -m "feat: setup CI/CD, sécurité Firestore, monitoring Sentry, SEO et backups"
+git push
+[main d373554] feat: setup CI/CD, sécurité Firestore, monitoring Sentry, SEO et backups
+ 25 files changed, 4053 insertions(+), 81 deletions(-)
+ create mode 100644 .github/workflows/backup.yml
+ create mode 100644 .github/workflows/deploy.yml
+ create mode 100644 functions/index.js
+ create mode 100644 functions/package-lock.json
+ create mode 100644 functions/package.json
+ create mode 100644 public/404.html
+ create mode 100644 src/js/product-page.js
+fatal: The current branch main has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin main
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+
+@Infos-MacBook-Pro ~/parapharmacie-me % cat firebase.json
+{
+  "hosting": {
+    "public": "dist",
+    "cleanUrls": true,
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "redirects": [
+      {
+        "source": "https://www.parapharmacie.me/**",
+        "destination": "https://parapharmacie.me/$1",
+        "type": 301
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }]
+      },
+      {
+        "source": "**/*.@(png|jpg|jpeg|webp|svg|ico)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=0,must-revalidate" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
+@Infos-MacBook-Pro ~/parapharmacie-me % cat vite.config.js
+import { defineConfig } from "vite";
+import viteImagemin from "vite-plugin-imagemin";
+
+export default defineConfig({
+  build: {
+    target: "es2019",
+    minify: "esbuild",
+    sourcemap: false,
+    assetsInlineLimit: 4096,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore", "firebase/storage"],
+          charts: ["chart.js/auto"],
+          stripe: ["@stripe/stripe-js"]
+        }
+      }
+    }
+  },
+  plugins: [
+    viteImagemin({
+      mozjpeg: { quality: 75 },
+      pngquant: { quality: [0.7, 0.85] },
+      webp: { quality: 75 }
+    })
+  ]
+});
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > vite.config.js
+import { defineConfig } from "vite";
+import viteImagemin from "vite-plugin-imagemin";
+import { resolve } from "path";
+
+export default defineConfig({
+  base: "/",
+  build: {
+    target: "es2019",
+    minify: "esbuild",
+    sourcemap: false,
+    assetsInlineLimit: 4096,
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, "src/pages/index.html"),
+        product: resolve(__dirname, "src/pages/product.html"),
+        cart: resolve(__dirname, "src/pages/cart.html"),
+        checkout: resolve(__dirname, "src/pages/checkout.html"),
+        login: resolve(__dirname, "src/pages/login.html"),
+        admin: resolve(__dirname, "src/pages/admin.html")
+      },
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore", "firebase/storage"],
+          charts: ["chart.js/auto"],
+          stripe: ["@stripe/stripe-js"]
+        }
+      }
+    }
+  },
+  plugins: [
+    viteImagemin({
+      mozjpeg: { quality: 75 },
+      pngquant: { quality: [0.7, 0.85] },
+      webp: { quality: 75 }
+    })
+  ]
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build
+firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+failed to load config from /Users/info/parapharmacie-me/vite.config.js
+error during build:
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite-plugin-imagemin' imported from /Users/info/parapharmacie-me/node_modules/.vite-temp/vite.config.js.timestamp-1772372457321-5883c0668d6a.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:255:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:783:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:707:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:690:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:307:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: latest version of firestore.rules already up to date, skipping upload...
+i  firestore: deploying indexes...
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 8 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install -D vite-plugin-imagemin
+npm error code EEXIST
+npm error syscall rename
+npm error path /Users/info/.npm/_cacache/tmp/54507787
+npm error dest /Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d
+npm error errno EEXIST
+npm error Invalid response body while trying to fetch https://registry.npmjs.org/@types%2fsvgo: EACCES: permission denied, rename '/Users/info/.npm/_cacache/tmp/54507787' -> '/Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d'
+npm error File exists: /Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d
+npm error Remove the existing file and try again, or run npm
+npm error with --force to overwrite files recklessly.
+npm error A complete log of this run can be found in: /Users/info/.npm/_logs/2026-03-01T13_42_02_635Z-debug-0.log
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build && firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+failed to load config from /Users/info/parapharmacie-me/vite.config.js
+error during build:
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite-plugin-imagemin' imported from /Users/info/parapharmacie-me/node_modules/.vite-temp/vite.config.js.timestamp-1772372543756-a0485558faf4d.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:255:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:783:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:707:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:690:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:307:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+@Infos-MacBook-Pro ~/parapharmacie-me % npm cache clean --force
+npm warn using --force Recommended protections disabled.
+npm error code EACCES
+npm error syscall unlink
+npm error path /Users/info/.npm/_cacache/index-v5/00/4b/41506cb5a6f673ed7600df661739e6f20e0b312c5b1d12d644bdb881af61
+npm error errno -13
+npm error
+npm error Your cache folder contains root-owned files, due to a bug in
+npm error previous versions of npm which has since been addressed.
+npm error
+npm error To permanently fix this problem, please run:
+npm error   sudo chown -R 501:20 "/Users/info/.npm"
+npm error A complete log of this run can be found in: /Users/info/.npm/_logs/2026-03-01T13_43_15_606Z-debug-0.log
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install -D vite-plugin-imagemin --force
+npm warn using --force Recommended protections disabled.
+npm error code EEXIST
+npm error syscall rename
+npm error path /Users/info/.npm/_cacache/tmp/13dea487
+npm error dest /Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d
+npm error errno EEXIST
+npm error Invalid response body while trying to fetch https://registry.npmjs.org/@types%2fsvgo: EACCES: permission denied, rename '/Users/info/.npm/_cacache/tmp/13dea487' -> '/Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d'
+npm error File exists: /Users/info/.npm/_cacache/content-v2/sha512/f3/06/405d2abaff650c4e147f3c5165eb939fc184160779579e9d0b1a08783648747d2502a09f445f2a4b74ed3b8f988d3d56b5b4ee9ab59aa5be91267e424e5d
+npm error Remove the existing file and try again, or run npm
+npm error with --force to overwrite files recklessly.
+npm error A complete log of this run can be found in: /Users/info/.npm/_logs/2026-03-01T13_43_25_592Z-debug-0.log
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build && firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+failed to load config from /Users/info/parapharmacie-me/vite.config.js
+error during build:
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite-plugin-imagemin' imported from /Users/info/parapharmacie-me/node_modules/.vite-temp/vite.config.js.timestamp-1772372640946-0fe9148a32c5d.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:255:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:783:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:707:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:690:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:307:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+@Infos-MacBook-Pro ~/parapharmacie-me % sudo chown -R $(whoami) ~/.npm
+Password:
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install -D vite-plugin-imagemin
+npm warn deprecated uuid@3.4.0: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+npm warn deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 403 packages, and audited 515 packages in 35s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+32 vulnerabilities (2 low, 15 moderate, 15 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build && firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+
+Unable to parse HTML; parse5 error code invalid-first-character-of-tag-name
+ at /Users/info/parapharmacie-me/src/pages/index.html:39:6
+37 |    <script type="module" src="/src/main.js"></script>
+38 |  </body>
+39 |  cat << 'EOF' > src/pages/product.html
+   |       ^
+40 |  <!DOCTYPE html>
+41 |  <html lang="fr">
+✓ 35 modules transformed.
+Generated an empty chunk: "stripe".
+dist/src/pages/product.html         0.55 kB │ gzip:   0.31 kB
+dist/src/pages/cart.html            0.68 kB │ gzip:   0.37 kB
+dist/src/pages/login.html           0.79 kB │ gzip:   0.40 kB
+dist/src/pages/checkout.html        1.00 kB │ gzip:   0.49 kB
+dist/src/pages/admin.html           1.22 kB │ gzip:   0.55 kB
+dist/src/pages/index.html           2.13 kB │ gzip:   0.74 kB
+dist/assets/main-CeBhkCGF.css       0.49 kB │ gzip:   0.32 kB
+dist/assets/stripe-l0sNRNKZ.js      0.00 kB │ gzip:   0.02 kB
+dist/assets/index-D8-PG1gB.js       1.60 kB │ gzip:   0.80 kB
+dist/assets/main-BnpTBDFZ.js        2.33 kB │ gzip:   1.19 kB
+dist/assets/charts-t3uEy1Ww.js    207.19 kB │ gzip:  71.07 kB
+dist/assets/firebase-BnR_4mk3.js  346.48 kB │ gzip: 107.88 kB
+✓ built in 1.35s
+
+✨ [vite-plugin-imagemin]- compressed image resource successfully: 
+dist/vite.svg  -17%  1.46kb / tiny: 1.22kb
+
+
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: latest version of firestore.rules already up to date, skipping upload...
+i  firestore: deploying indexes...
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 18 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % rm -rf dist node_modules functions .firebase .vite
+npm cache clean --force
+npm warn using --force Recommended protections disabled.
+@Infos-MacBook-Pro ~/parapharmacie-me % rm -rf parapharmacie-me
+npm create vite@latest parapharmacie-me -- --template vanilla
+cd parapharmacie-me
+npm install
+npm i firebase @stripe/stripe-js emailjs-com chart.js
+npm i -D vite-plugin-imagemin
+npm i -D firebase-tools
+
+> parapharmacie-me@0.0.0 npx
+> create-vite parapharmacie-me --template vanilla
+
+│
+◇  Use Vite 8 beta (Experimental)?:
+│  No
+│
+◇  Install with npm and start now?
+│  Yes
+│
+◇  Scaffolding project in /Users/info/parapharmacie-me/parapharmacie-me...
+│
+◇  Installing dependencies with npm...
+
+added 13 packages, and audited 14 packages in 42s
+
+5 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+│
+◇  Starting dev server...
+
+> parapharmacie-me@0.0.0 dev
+> vite
+
+
+  VITE v7.3.1  ready in 560 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help
+^C
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > vite.config.js
+import { defineConfig } from "vite";
+import viteImagemin from "vite-plugin-imagemin";
+import { resolve } from "path";
+
+export default defineConfig({
+  base: "/",
+  build: {
+    target: "es2019",
+    minify: "esbuild",
+    sourcemap: false,
+    assetsInlineLimit: 4096,
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, "src/pages/index.html"),
+        shop: resolve(__dirname, "src/pages/shop.html"),
+        product: resolve(__dirname, "src/pages/product.html"),
+        cart: resolve(__dirname, "src/pages/cart.html"),
+        checkout: resolve(__dirname, "src/pages/checkout.html"),
+        login: resolve(__dirname, "src/pages/login.html"),
+        admin: resolve(__dirname, "src/pages/admin.html")
+      },
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore", "firebase/storage"],
+          charts: ["chart.js/auto"],
+          stripe: ["@stripe/stripe-js"]
+        }
+      }
+    }
+  },
+  plugins: [
+    viteImagemin({
+      mozjpeg: { quality: 75 },
+      pngquant: { quality: [0.7, 0.85] },
+      webp: { quality: 75 }
+    })
+  ]
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % mkdir -p src/pages src/css src/js public
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/css/main.css
+:root{--green:#0a7a5f;--dark:#0f172a;--light:#f8fafc;--muted:#94a3b8;--card:#ffffff}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Arial;background:var(--light);color:var(--dark)}
+a{text-decoration:none;color:inherit}img{max-width:100%;display:block}
+.header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e2e8f0;z-index:10}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
+.brand{font-weight:700;font-size:20px;color:var(--green)}
+.nav-links{display:flex;gap:16px;font-weight:600}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+.hero{display:grid;gap:16px;padding:20px;border-radius:16px;background:#ecfeff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid #e2e8f0;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px} 
+.btn{background:var(--green);color:white;padding:10px 14px;border:none;border-radius:10px;font-weight:600;cursor:pointer}
+.btn-outline{background:white;border:1px solid var(--green);color:var(--green)}
+.badge{background:#e2e8f0;padding:4px 8px;border-radius:999px;font-size:12px}
+.footer{margin-top:40px;padding:20px;background:#0f172a;color:white}
+.footer a{color:#a7f3d0}
+.admin{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.sidebar{background:#0f172a;color:white;padding:20px}
+.sidebar a{color:white;display:block;padding:8px 0}
+.admin-main{padding:20px}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}
+.form{display:grid;gap:10px;max-width:480px}
+.input,select,textarea{padding:10px;border:1px solid #cbd5e1;border-radius:10px;width:100%}
+@media(max-width:768px){.admin{grid-template-columns:1fr}.sidebar{position:sticky;top:0}}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/firebase.js
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+export const functions = getFunctions(app);
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/products.js
+import { db, storage } from "./firebase";
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+export async function getProducts() {
+  const snap = await getDocs(query(collection(db, "products")));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function addProduct(data, file) {
+  const imgRef = ref(storage, `products/${Date.now()}_${file.name}`);
+  await uploadBytes(imgRef, file);
+  const url = await getDownloadURL(imgRef);
+  return addDoc(collection(db, "products"), { ...data, image: url, active: true });
+}
+
+export async function updateProduct(id, data) {
+  return updateDoc(doc(db, "products", id), data);
+}
+
+export async function deleteProduct(id) {
+  return deleteDoc(doc(db, "products", id));
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/cart.js
+const KEY="parapharmacie_cart";
+export const getCart=()=>JSON.parse(localStorage.getItem(KEY)||"[]");
+export const saveCart=c=>localStorage.setItem(KEY,JSON.stringify(c));
+export const addToCart=(p,qty=1)=>{const c=getCart();const i=c.find(x=>x.id===p.id);if(i)i.qty+=qty;else c.push({...p,qty});saveCart(c)};
+export const updateQty=(id,qty)=>saveCart(getCart().map(i=>i.id===id?{...i,qty}:i));
+export const cartTotal=()=>getCart().reduce((s,i)=>s+i.price*i.qty,0);
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/auth.js
+import { auth, db } from "./firebase";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+
+export const login=(email,password)=>signInWithEmailAndPassword(auth,email,password);
+export const authWatcher=(cb)=>onAuthStateChanged(auth,cb);
+export const isAdmin=async(uid)=>{const s=await getDoc(doc(db,"roles",uid));return s.exists()&&s.data().role==="admin"};
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/admin.js
+import { getProducts, addProduct, deleteProduct, updateProduct } from "./products";
+
+export async function renderAdmin() {
+  const list = document.getElementById("adminProducts");
+  if (!list) return;
+  const products = await getProducts();
+  list.innerHTML = products.map(p=>`
+    <tr>
+      <td>${p.title}</td><td>${p.price}</td><td>${p.category}</td><td>${p.stock}</td>
+      <td>
+        <button data-id="${p.id}" class="del btn-outline">Supprimer</button>
+      </td>
+    </tr>
+  `).join("");
+  list.querySelectorAll(".del").forEach(b=>b.onclick=()=>deleteProduct(b.dataset.id));
+}
+
+export function bindAdminForm() {
+  const form=document.getElementById("productForm");
+  if(!form) return;
+  form.addEventListener("submit", async e=>{
+    e.preventDefault();
+    const f=new FormData(form);
+    await addProduct({
+      title:f.get("title"),
+      price:Number(f.get("price")),
+      category:f.get("category"),
+      stock:Number(f.get("stock")),
+      description:f.get("description")
+    }, f.get("image"));
+    form.reset();
+    renderAdmin();
+  });
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/shop.js
+import { getProducts } from "./products";
+import { addToCart } from "./cart";
+
+export async function renderShop() {
+  const grid=document.getElementById("productsGrid");
+  if(!grid) return;
+  const products=await getProducts();
+  grid.innerHTML=products.map(p=>`
+    <div class="card">
+      <img src="${p.image}" alt="${p.title}" loading="lazy">
+      <div class="badge">${p.category}</div>
+      <strong>${p.title}</strong>
+      <span>${p.price} MAD</span>
+      <button class="btn" data-id="${p.id}">Ajouter</button>
+    </div>
+  `).join("");
+  grid.querySelectorAll("button").forEach(btn=>{
+    const p=products.find(x=>x.id===btn.dataset.id);
+    btn.onclick=()=>addToCart(p,1);
+  });
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/main.js
+import "./css/main.css";
+import { renderShop } from "./js/shop";
+import { renderAdmin, bindAdminForm } from "./js/admin";
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  renderShop();
+  renderAdmin();
+  bindAdminForm();
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/pages/index.html
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Parapharmacie.me</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links"><a href="/index.html">Accueil</a><a href="/shop.html">Boutique</a><a href="/cart.html">Panier</a><a href="/login.html">Compte</a></nav></div></header>
+<main class="container"><section class="hero"><h1>PHARMACIE TAWFIQ</h1><p>Parapharmacie premium à Khouribga.</p><a class="btn" href="/shop.html">Voir la boutique</a></section></main>
+<footer class="footer"><div>PHARMACIE TAWFIQ</div><div>251 ANCIENNE MÉDINA DU SÉCHAGE, 25010 Khouribga, Morocco</div><div><a href="tel:0520828417">0520-828417</a> | <a href="mailto:hamidkaram554@gmail.com">hamidkaram554@gmail.com</a></div><div><a href="https://instagram.com" target="_blank">Instagram</a></div><iframe width="100%" height="220" style="border:0" loading="lazy" allowfullscreen src="https://www.google.com/maps?q=251%20ANCIENNE%20M%C3%89DINA%20DU%20S%C3%89CHAGE,%20Khouribga&output=embed"></iframe></footer>
+<script type="module" src="/src/main.js"></script></body></html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/pages/shop.html
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Boutique</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links"><a href="/index.html">Accueil</a><a href="/shop.html">Boutique</a><a href="/cart.html">Panier</a><a href="/login.html">Compte</a></nav></div></header>
+<main class="container"><h2>Boutique</h2><section id="productsGrid" class="grid"></section></main>
+<script type="module" src="/src/main.js"></script></body></html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/pages/cart.html
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Panier</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links"><a href="/index.html">Accueil</a><a href="/shop.html">Boutique</a><a href="/cart.html">Panier</a><a href="/login.html">Compte</a></nav></div></header>
+<main class="container"><h2>Panier</h2><div id="cartItems"></div></main>
+<script type="module" src="/src/main.js"></script></body></html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/pages/checkout.html
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Checkout</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links"><a href="/index.html">Accueil</a><a href="/shop.html">Boutique</a><a href="/cart.html">Panier</a><a href="/login.html">Compte</a></nav></div></header>
+<main class="container"><h2>Checkout</h2><form class="form"><input class="input" placeholder="Nom complet"/><input class="input" placeholder="Téléphone"/><input class="input" placeholder="Adresse"/><select class="input"><option>COD</option><option>Stripe Test</option></select><button class="btn">Commander</button></form></main>
+<script type="module" src="/src/main.js"></script></body></html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/pages/login.html
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Login</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links"><a href="/index.html">Accueil</a><a href="/shop.html">Boutique</a><a href="/cart.html">Panier</a><a href="/login.html">Compte</a></nav></div></header>
+<main class="container"><h2>Connexion Admin</h2><form class="form"><input class="input" type="email" placeholder="Email"/><input class="input" type="password" placeholder="Mot de passe"/><button class="btn">Connexion</button></form></main>
+<script type="module" src="/src/main.js"></script></body></html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/pages/admin.html
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<div class="admin">
+  <aside class="sidebar">
+    <h3>Admin</h3>
+    <a href="/admin.html">Dashboard</a>
+    <a href="/shop.html">Boutique</a>
+  </aside>
+  <main class="admin-main">
+    <h2>Produits</h2>
+    <form id="productForm" class="form">
+      <input name="title" class="input" placeholder="Nom produit" required>
+      <input name="price" class="input" type="number" placeholder="Prix" required>
+      <input name="category" class="input" placeholder="Catégorie" required>
+      <input name="stock" class="input" type="number" placeholder="Stock" required>
+      <textarea name="description" class="input" placeholder="Description"></textarea>
+      <input name="image" class="input" type="file" required>
+      <button class="btn">Ajouter</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Nom</th><th>Prix</th><th>Catégorie</th><th>Stock</th><th>Action</th></tr></thead>
+      <tbody id="adminProducts"></tbody>
+    </table>
+  </main>
+</div>
+<script type="module" src="/src/main.js"></script></body></html>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > public/manifest.json
+{"name":"Parapharmacie.me","short_name":"Parapharmacie","start_url":"/","display":"standalone","background_color":"#ffffff","theme_color":"#0a7a5f","icons":[{"src":"/icon-192.png","sizes":"192x192","type":"image/png"},{"src":"/icon-512.png","sizes":"512x512","type":"image/png"}]}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > public/robots.txt
+User-agent: *
+Allow: /
+Sitemap: https://parapharmacie.me/sitemap.xml
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > public/sitemap.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://parapharmacie.me/</loc></url>
+  <url><loc>https://parapharmacie.me/shop</loc></url>
+  <url><loc>https://parapharmacie.me/cart</loc></url>
+  <url><loc>https://parapharmacie.me/checkout</loc></url>
+  <url><loc>https://parapharmacie.me/login</loc></url>
+  <url><loc>https://parapharmacie.me/admin</loc></url>
+</urlset>
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > firebase.json
+{
+  "hosting": {
+    "public": "dist",
+    "cleanUrls": true,
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      { "source": "**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }] },
+      { "source": "**/*.@(png|jpg|jpeg|webp|svg|ico)", "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }] },
+      { "source": "**/*.html", "headers": [{ "key": "Cache-Control", "value": "public,max-age=0,must-revalidate" }] }
+    ]
+  },
+  "firestore": { "rules": "firestore.rules" }
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn(){return request.auth!=null;}
+    function isAdmin(){return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role=="admin";}
+    match /products/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() &&
+        request.resource.data.keys().hasOnly(["title","description","price","category","stock","image","active"]) &&
+        request.resource.data.title is string &&
+        request.resource.data.description is string &&
+        request.resource.data.category is string &&
+        request.resource.data.image is string &&
+        request.resource.data.active is bool &&
+        request.resource.data.stock is number &&
+        request.resource.data.price is number &&
+        request.resource.data.price > 0;
+    }
+    match /orders/{id} {
+      allow create: if false;
+      allow read: if isSignedIn() && (request.auth.uid==resource.data.userId || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    match /roles/{id} {
+      allow read: if isSignedIn() && request.auth.uid==id;
+      allow write: if false;
+    }
+  }
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase login
+firebase init hosting
+firebase init firestore
+firebase init storage
+Already logged in as lahraouianas16@gmail.com
+
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/info/parapharmacie-me
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+
+=== Project Setup
+
+First, let's associate this project directory with a Firebase project.
+You can create multiple project aliases by running firebase use --add, 
+
+Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+
+Error: Failed to get Firebase project parashop-tawfiq-v2. Please make sure the project exists and your account has permission to access it.
+
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/info/parapharmacie-me
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+
+=== Project Setup
+
+First, let's associate this project directory with a Firebase project.
+You can create multiple project aliases by running firebase use --add, 
+
+Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+
+Error: Failed to get Firebase project parashop-tawfiq-v2. Please make sure the project exists and your account has permission to access it.
+
+Having trouble? Try again or contact support with contents of firebase-debug.log
+
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/info/parapharmacie-me
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+
+=== Project Setup
+
+First, let's associate this project directory with a Firebase project.
+You can create multiple project aliases by running firebase use --add, 
+
+Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+
+Error: Failed to get Firebase project parashop-tawfiq-v2. Please make sure the project exists and your account has permission to access it.
+
+Having trouble? Try again or contact support with contents of firebase-debug.log
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build
+firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+sh: vite: command not found
+Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+
+Error: Assertion failed: resolving hosting target of a site with no site name or target name. This should have caused an error earlier
+
+Having trouble? Try again or contact support with contents of firebase-debug.log
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase logout
+firebase login --reauth
+firebase use --add
+✔  Logged out from lahraouianas16@gmail.com
+
+Visit this URL on this device to log in:
+https://accounts.google.com/o/oauth2/auth?client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com&scope=email%20openid%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloudplatformprojects.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Ffirebase%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&response_type=code&state=402342661&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+
+Waiting for authentication...
+
+✔  Success! Logged in as lahraouianas16@gmail.com
+✔ Which project do you want to add? parashop-tawfiq-v2
+✔ What alias do you want to use for this project? (e.g. staging) prod
+
+Created alias prod for parashop-tawfiq-v2.
+Now using alias prod (parashop-tawfiq-v2)
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install
+npm run build
+npm warn deprecated uuid@3.4.0: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+npm warn deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated emailjs-com@3.2.0: The SDK name changed to @emailjs/browser
+
+added 514 packages, and audited 515 packages in 2m
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+32 vulnerabilities (2 low, 2 moderate, 28 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+✓ 35 modules transformed.
+Generated an empty chunk: "charts".
+Generated an empty chunk: "stripe".
+dist/src/pages/product.html         0.47 kB │ gzip:   0.30 kB
+dist/src/pages/cart.html            0.73 kB │ gzip:   0.41 kB
+dist/src/pages/shop.html            0.76 kB │ gzip:   0.42 kB
+dist/src/pages/login.html           0.90 kB │ gzip:   0.48 kB
+dist/src/pages/checkout.html        1.00 kB │ gzip:   0.51 kB
+dist/src/pages/admin.html           1.38 kB │ gzip:   0.60 kB
+dist/src/pages/index.html           1.38 kB │ gzip:   0.75 kB
+dist/assets/main-rQ4fiRX8.css       1.81 kB │ gzip:   0.78 kB
+dist/assets/charts-l0sNRNKZ.js      0.00 kB │ gzip:   0.02 kB
+dist/assets/stripe-l0sNRNKZ.js      0.00 kB │ gzip:   0.02 kB
+dist/assets/main-DnGZHiSV.js        5.53 kB │ gzip:   2.39 kB
+dist/assets/firebase-DcNJi4MQ.js  358.10 kB │ gzip: 111.87 kB
+✓ built in 1.17s
+
+✨ [vite-plugin-imagemin]- compressed image resource successfully: 
+dist/vite.svg  -17%  1.46kb / tiny: 1.22kb
+
+
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase init hosting
+firebase deploy
+
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/info/parapharmacie-me
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+
+=== Project Setup
+
+First, let's associate this project directory with a Firebase project.
+You can create multiple project aliases by running firebase use --add, 
+
+i  Using project parashop-tawfiq-v2 (parashop-tawfiq-v2) .
+
+=== Hosting Setup
+
+Your public directory is the folder (relative to your project directory) that
+will contain Hosting assets to be uploaded with firebase deploy. If you
+have a build process for your assets, use your build's output directory.
+
+✔ What do you want to use as your public directory? dist
+✔ Configure as a single-page app (rewrite all urls to /index.html)? No
+✔ Set up automatic builds and deploys with GitHub? No
+✔ File dist/404.html already exists. Overwrite? No
+i  Skipping write of dist/404.html
+✔  Wrote dist/index.html
+
+✔  Wrote configuration info to firebase.json
+✔  Wrote project information to .firebaserc
+
+✔  Firebase initialization complete!
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: uploading rules firestore.rules...
+i  firestore: deploying indexes...
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 19 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % npm install -D vite
+npm run build
+
+up to date, audited 515 packages in 4s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+32 vulnerabilities (2 low, 2 moderate, 28 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+✓ 35 modules transformed.
+Generated an empty chunk: "charts".
+Generated an empty chunk: "stripe".
+dist/src/pages/product.html         0.47 kB │ gzip:   0.30 kB
+dist/src/pages/cart.html            0.73 kB │ gzip:   0.41 kB
+dist/src/pages/shop.html            0.76 kB │ gzip:   0.42 kB
+dist/src/pages/login.html           0.90 kB │ gzip:   0.48 kB
+dist/src/pages/checkout.html        1.00 kB │ gzip:   0.51 kB
+dist/src/pages/admin.html           1.38 kB │ gzip:   0.60 kB
+dist/src/pages/index.html           1.38 kB │ gzip:   0.75 kB
+dist/assets/main-rQ4fiRX8.css       1.81 kB │ gzip:   0.78 kB
+dist/assets/charts-l0sNRNKZ.js      0.00 kB │ gzip:   0.02 kB
+dist/assets/stripe-l0sNRNKZ.js      0.00 kB │ gzip:   0.02 kB
+dist/assets/main-DnGZHiSV.js        5.53 kB │ gzip:   2.39 kB
+dist/assets/firebase-DcNJi4MQ.js  358.10 kB │ gzip: 111.87 kB
+✓ built in 1.14s
+
+✨ [vite-plugin-imagemin]- compressed image resource successfully: 
+dist/vite.svg  -17%  1.46kb / tiny: 1.22kb
+
+
+@Infos-MacBook-Pro ~/parapharmacie-me % mv src/pages/*.html .
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > vite.config.js
+import { defineConfig } from "vite";
+import viteImagemin from "vite-plugin-imagemin";
+import { resolve } from "path";
+
+export default defineConfig({
+  base: "/",
+  build: {
+    target: "es2019",
+    minify: "esbuild",
+    sourcemap: false,
+    assetsInlineLimit: 4096,
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, "index.html"),
+        shop: resolve(__dirname, "shop.html"),
+        product: resolve(__dirname, "product.html"),
+        cart: resolve(__dirname, "cart.html"),
+        checkout: resolve(__dirname, "checkout.html"),
+        login: resolve(__dirname, "login.html"),
+        admin: resolve(__dirname, "admin.html")
+      },
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore", "firebase/storage"],
+          charts: ["chart.js/auto"],
+          stripe: ["@stripe/stripe-js"]
+        }
+      }
+    }
+  },
+  plugins: [
+    viteImagemin({
+      mozjpeg: { quality: 75 },
+      pngquant: { quality: [0.7, 0.85] },
+      webp: { quality: 75 }
+    })
+  ]
+});
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % perl -0pi -e 's#<nav class="nav-links">.*?</nav>#<nav class="nav-links">\n  <a href="/index.html">Accueil</a>\n  <a href="/shop.html">Boutique</a>\n  <a href="/cart.html">Panier</a>\n  <a href="/login.html">Compte</a>\n</nav>#s' index.html shop.html cart.html checkout.html login.html admin.html
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build
+firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+✓ 35 modules transformed.
+Generated an empty chunk: "charts".
+Generated an empty chunk: "stripe".
+dist/product.html                   0.47 kB │ gzip:   0.30 kB
+dist/cart.html                      0.75 kB │ gzip:   0.41 kB
+dist/shop.html                      0.78 kB │ gzip:   0.42 kB
+dist/login.html                     0.91 kB │ gzip:   0.48 kB
+dist/checkout.html                  1.01 kB │ gzip:   0.51 kB
+dist/admin.html                     1.38 kB │ gzip:   0.60 kB
+dist/index.html                     1.39 kB │ gzip:   0.76 kB
+dist/assets/main-rQ4fiRX8.css       1.81 kB │ gzip:   0.78 kB
+dist/assets/charts-l0sNRNKZ.js      0.00 kB │ gzip:   0.02 kB
+dist/assets/stripe-l0sNRNKZ.js      0.00 kB │ gzip:   0.02 kB
+dist/assets/main-DnGZHiSV.js        5.53 kB │ gzip:   2.39 kB
+dist/assets/firebase-DcNJi4MQ.js  358.10 kB │ gzip: 111.87 kB
+✓ built in 1.16s
+
+✨ [vite-plugin-imagemin]- compressed image resource successfully: 
+dist/vite.svg  -17%  1.46kb / tiny: 1.22kb
+
+
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: latest version of firestore.rules already up to date, skipping upload...
+i  firestore: deploying indexes...
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 18 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % /index.html
+/shop.html
+/cart.html
+/checkout.html
+/login.html
+/admin.html
+zsh: no such file or directory: /index.html
+zsh: no such file or directory: /shop.html
+zsh: no such file or directory: /cart.html
+zsh: no such file or directory: /checkout.html
+zsh: no such file or directory: /login.html
+zsh: no such file or directory: /admin.html
+@Infos-MacBook-Pro ~/parapharmacie-me % open "https://parashop-tawfiq-v2.web.app/"
+open "https://parashop-tawfiq-v2.web.app/shop.html"
+open "https://parashop-tawfiq-v2.web.app/cart.html"
+open "https://parashop-tawfiq-v2.web.app/checkout.html"
+open "https://parashop-tawfiq-v2.web.app/login.html"
+open "https://parashop-tawfiq-v2.web.app/admin.html"
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase auth:import <(echo '{"users":[{"localId":"admin001","email":"hamidkaram554@gmail.com","emailVerified":true,"passwordHash":"$(openssl rand -base64 32)","salt":"$(openssl rand -base64 16)"}]}') \
+--hash-algo=HMAC_SHA256 --hash-key="$(openssl rand -base64 32)" \
+--salt-separator="Bw==" \
+--rounds=8
+
+Error: Data file must end with .csv or .json
+@Infos-MacBook-Pro ~/parapharmacie-me % cat << 'EOF' > users.json
+{
+  "users": [
+    {
+      "localId": "admin001",
+      "email": "anaslahraoui16@gmail.com",
+      "emailVerified": true,
+      "passwordHash": "aGFzaGVkX3Bhc3N3b3Jk",
+      "salt": "c2FsdF92YWx1ZQ=="
+    }
+  ]
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase auth:import users.json \
+  --hash-algo=HMAC_SHA256 \
+  --hash-key="c2VjcmV0X2tleQ==" \
+  --salt-separator="Bw==" \
+  --rounds=8
+Processing users.json (213 bytes)
+Starting importing 1 account(s).
+
+Error: Request to https://www.googleapis.com/identitytoolkit/v3/relyingparty/uploadAccount had HTTP Error: 400, CONFIGURATION_NOT_FOUND
+@Infos-MacBook-Pro ~/parapharmacie-me % rm .github/workflows/backup.yml
+git add .
+git commit -m "🚀 Mise en production finale (optimisations et sécurité)"
+git push
+[main 8ecf77e] 🚀 Mise en production finale (optimisations et sécurité)
+ 43 files changed, 7152 insertions(+), 4008 deletions(-)
+ delete mode 100644 .github/workflows/backup.yml
+ create mode 100644 admin.html
+ create mode 100644 cart.html
+ create mode 100644 checkout.html
+ delete mode 100644 functions/index.js
+ delete mode 100644 functions/package-lock.json
+ delete mode 100644 functions/package.json
+ create mode 100644 login.html
+ create mode 100644 parapharmacie-me/.gitignore
+ create mode 100644 parapharmacie-me/index.html
+ create mode 100644 parapharmacie-me/package-lock.json
+ create mode 100644 parapharmacie-me/package.json
+ create mode 100644 parapharmacie-me/public/vite.svg
+ create mode 100644 parapharmacie-me/src/counter.js
+ create mode 100644 parapharmacie-me/src/javascript.svg
+ create mode 100644 parapharmacie-me/src/main.js
+ create mode 100644 parapharmacie-me/src/style.css
+ rename src/pages/product.html => product.html (100%)
+ create mode 100644 shop.html
+ create mode 100644 src/js/shop.js
+ delete mode 100644 src/pages/admin.html
+ delete mode 100644 src/pages/cart.html
+ delete mode 100644 src/pages/checkout.html
+ delete mode 100644 src/pages/index.html
+ delete mode 100644 src/pages/login.html
+ create mode 100644 users.json
+fatal: The current branch main has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin main
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+
+@Infos-MacBook-Pro ~/parapharmacie-me % firebase auth:import <(echo '{"users":[{"localId":"admin001","email":"hamidkaram554@gmail.com","emailVerified":true,"passwordHash":"$(openssl rand -base64 32)","salt":"$(openssl rand -base64 16)"}]}') \
+--hash-algo=HMAC_SHA256 --hash-key="$(openssl rand -base64 32)" \
+--salt-separator="Bw==" \
+--rounds=8
+
+Error: Data file must end with .csv or .json
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<EOF > seed-admin.mjs
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+
+const app = initializeApp({
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+});
+
+const db = getFirestore(app);
+
+await setDoc(doc(db, "roles", "admin001"), {
+  role: "admin"
+});
+
+console.log("Admin role created");
+EOF
+
+node seed-admin.mjs
+[2026-03-01T16:46:08.083Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151d4 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:08.283Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151d5 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:09.425Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151d6 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:11.230Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151d7 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:13.387Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151d8 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:16.102Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151d9 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:18.839Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151da error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:24.051Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151db error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:29.877Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151dc error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:39.900Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151dd error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:46:59.032Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151de error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+
+[2026-03-01T16:47:48.846Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151df error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:48:23.011Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151e0 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:49:27.206Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151e1 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:50:25.187Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151e2 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:50:58.913Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151e3 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:51:50.991Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151e4 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+[2026-03-01T16:52:25.081Z]  @firebase/firestore: Firestore (12.10.0): GrpcConnection RPC 'Write' stream 0x238151e5 error. Code: 3 Message: 3 INVALID_ARGUMENT: Invalid resource field value in the request.
+©^C
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/auth.js
+import { auth, db } from "./firebase";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+
+export const login = async (email, password) => {
+  const user = await signInWithEmailAndPassword(auth, email, password);
+  const snap = await getDoc(doc(db, "roles", user.user.uid));
+  if (!snap.exists() || snap.data().role !== "admin") {
+    alert("Not authorized");
+    return;
+  }
+  window.location.href = "/admin.html";
+};
+
+export const authWatcher = (cb) => onAuthStateChanged(auth, cb);
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % >....                                                                                    
+      const p = d.data();
+      table.innerHTML += `
+        <tr>
+          <td>${p.title}</td>
+          <td>${p.price}</td>
+          <td>${p.category}</td>
+          <td>${p.stock}</td>
+          <td><button data-id="${d.id}" class="del">Delete</button></td>
+        </tr>`;
+    });
+
+    document.querySelectorAll(".del").forEach(btn=>{
+      btn.onclick = ()=> deleteDoc(doc(db,"products",btn.dataset.id));
+    });
+  });
+
+  form.addEventListener("submit", async e=>{
+    e.preventDefault();
+    const f = new FormData(form);
+    const file = f.get("image");
+    const imgRef = ref(storage, `products/${Date.now()}_${file.name}`);
+    await uploadBytes(imgRef, file);
+    const url = await getDownloadURL(imgRef);
+
+    await addDoc(collection(db,"products"),{
+      title: f.get("title"),
+      price: Number(f.get("price")),
+      category: f.get("category"),
+      stock: Number(f.get("stock")),
+      description: f.get("description"),
+      image: url,
+      active: true,
+      createdAt: Date.now()
+    });
+
+    form.reset();
+  });
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % cat <<'EOF' > src/js/checkout.js
+import { db } from "./firebase";
+import { collection, addDoc } from "firebase/firestore";
+import { getCart } from "./cart";
+
+export function initCheckout() {
+  const form = document.querySelector("form");
+  if (!form) return;
+
+  form.addEventListener("submit", async e=>{
+    e.preventDefault();
+
+    await addDoc(collection(db,"orders"),{
+      customer: form[0].value,
+      phone: form[1].value,
+      address: form[2].value,
+      payment: form[3].value,
+      items: getCart(),
+      total: getCart().reduce((s,i)=>s+i.price*i.qty,0),
+      status: "new",
+      createdAt: Date.now()
+    });
+
+    localStorage.removeItem("parapharmacie_cart");
+    alert("Commande envoyée");
+    window.location.href="/index.html";
+  });
+}
+EOF
+@Infos-MacBook-Pro ~/parapharmacie-me % npm run build
+firebase deploy
+
+> parapharmacie-me@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+✓ 35 modules transformed.
+
+✨ [vite-plugin-imagemin]- compressed image resource successfully: 
+dist/vite.svg  0%  1.22kb / tiny: 1.22kb
+
+
+✗ Build failed in 429ms
+error during build:
+src/main.js (3:9): "renderAdmin" is not exported by "src/js/admin.js", imported by "src/main.js".
+file: /Users/info/parapharmacie-me/src/main.js:3:9
+
+1: import "./css/main.css";
+2: import { renderShop } from "./js/shop";
+3: import { renderAdmin, bindAdminForm } from "./js/admin";
+            ^
+4: 
+5: document.addEventListener("DOMContentLoaded", ()=>{
+
+    at getRollupError (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at Module.error (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+    at Module.traceVariable (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+    at ModuleScope.findVariable (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+    at ReturnValueScope.findVariable (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionBodyScope.findVariable (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at Identifier.bind (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+    at CallExpression.bind (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:2829:23)
+    at CallExpression.bind (file:///Users/info/parapharmacie-me/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
+
+=== Deploying to 'parashop-tawfiq-v2'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: latest version of firestore.rules already up to date, skipping upload...
+i  firestore: deploying indexes...
+i  hosting[parashop-tawfiq-v2]: beginning deploy...
+i  hosting[parashop-tawfiq-v2]: found 18 files in dist
+✔  hosting[parashop-tawfiq-v2]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[parashop-tawfiq-v2]: finalizing version...
+✔  hosting[parashop-tawfiq-v2]: version finalized
+i  hosting[parashop-tawfiq-v2]: releasing new version...
+✔  hosting[parashop-tawfiq-v2]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/parashop-tawfiq-v2/overview
+Hosting URL: https://parashop-tawfiq-v2.web.app
+@Infos-MacBook-Pro ~/parapharmacie-me % ls
+README.md		dist			login.html		parapharmacie-me	shop.html
+admin.html		firebase.json		node_modules		product.html		src
+cart.html		firestore.rules		package-lock.json	public			users.json
+checkout.html		index.html		package.json		seed-admin.mjs		vite.config.js
+@Infos-MacBook-Pro ~/parapharmacie-me % cat *
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<div class="admin">
+  <aside class="sidebar">
+    <h3>Admin</h3>
+    <a href="/admin.html">Dashboard</a>
+    <a href="/shop.html">Boutique</a>
+  </aside>
+  <main class="admin-main">
+    <h2>Produits</h2>
+    <form id="productForm" class="form">
+      <input name="title" class="input" placeholder="Nom produit" required>
+      <input name="price" class="input" type="number" placeholder="Prix" required>
+      <input name="category" class="input" placeholder="Catégorie" required>
+      <input name="stock" class="input" type="number" placeholder="Stock" required>
+      <textarea name="description" class="input" placeholder="Description"></textarea>
+      <input name="image" class="input" type="file" required>
+      <button class="btn">Ajouter</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Nom</th><th>Prix</th><th>Catégorie</th><th>Stock</th><th>Action</th></tr></thead>
+      <tbody id="adminProducts"></tbody>
+    </table>
+  </main>
+</div>
+<script type="module" src="/src/main.js"></script></body></html>
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Panier</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links">
+  <a href="/index.html">Accueil</a>
+  <a href="/shop.html">Boutique</a>
+  <a href="/cart.html">Panier</a>
+  <a href="/login.html">Compte</a>
+</nav></div></header>
+<main class="container"><h2>Panier</h2><div id="cartItems"></div></main>
+<script type="module" src="/src/main.js"></script></body></html>
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Checkout</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links">
+  <a href="/index.html">Accueil</a>
+  <a href="/shop.html">Boutique</a>
+  <a href="/cart.html">Panier</a>
+  <a href="/login.html">Compte</a>
+</nav></div></header>
+<main class="container"><h2>Checkout</h2><form class="form"><input class="input" placeholder="Nom complet"/><input class="input" placeholder="Téléphone"/><input class="input" placeholder="Adresse"/><select class="input"><option>COD</option><option>Stripe Test</option></select><button class="btn">Commander</button></form></main>
+<script type="module" src="/src/main.js"></script></body></html>
+cat: dist: Is a directory
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn(){return request.auth!=null;}
+    function isAdmin(){return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role=="admin";}
+    match /products/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() &&
+        request.resource.data.keys().hasOnly(["title","description","price","category","stock","image","active"]) &&
+        request.resource.data.title is string &&
+        request.resource.data.description is string &&
+        request.resource.data.category is string &&
+        request.resource.data.image is string &&
+        request.resource.data.active is bool &&
+        request.resource.data.stock is number &&
+        request.resource.data.price is number &&
+        request.resource.data.price > 0;
+    }
+    match /orders/{id} {
+      allow create: if false;
+      allow read: if isSignedIn() && (request.auth.uid==resource.data.userId || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    match /roles/{id} {
+      allow read: if isSignedIn() && request.auth.uid==id;
+      allow write: if false;
+    }
+  }
+}
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Parapharmacie.me</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links">
+  <a href="/index.html">Accueil</a>
+  <a href="/shop.html">Boutique</a>
+  <a href="/cart.html">Panier</a>
+  <a href="/login.html">Compte</a>
+</nav></div></header>
+<main class="container"><section class="hero"><h1>PHARMACIE TAWFIQ</h1><p>Parapharmacie premium à Khouribga.</p><a class="btn" href="/shop.html">Voir la boutique</a></section></main>
+<footer class="footer"><div>PHARMACIE TAWFIQ</div><div>251 ANCIENNE MÉDINA DU SÉCHAGE, 25010 Khouribga, Morocco</div><div><a href="tel:0520828417">0520-828417</a> | <a href="mailto:hamidkaram554@gmail.com">hamidkaram554@gmail.com</a></div><div><a href="https://instagram.com" target="_blank">Instagram</a></div><iframe width="100%" height="220" style="border:0" loading="lazy" allowfullscreen src="https://www.google.com/maps?q=251%20ANCIENNE%20M%C3%89DINA%20DU%20S%C3%89CHAGE,%20Khouribga&output=embed"></iframe></footer>
+<script type="module" src="/src/main.js"></script></body></html>
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Login</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links">
+  <a href="/index.html">Accueil</a>
+  <a href="/shop.html">Boutique</a>
+  <a href="/cart.html">Panier</a>
+  <a href="/login.html">Compte</a>
+</nav></div></header>
+<main class="container"><h2>Connexion Admin</h2><form class="form"><input class="input" type="email" placeholder="Email"/><input class="input" type="password" placeholder="Mot de passe"/><button class="btn">Connexion</button></form></main>
+<script type="module" src="/src/main.js"></script></body></html>
+cat: node_modules: Is a directory
 {
   "name": "parapharmacie-me",
   "version": "0.0.0",
@@ -1760,9 +4569,9 @@
       "license": "MIT"
     },
     "node_modules/@types/node": {
-      "version": "25.3.3",
-      "resolved": "https://registry.npmjs.org/@types/node/-/node-25.3.3.tgz",
-      "integrity": "sha512-DpzbrH7wIcBaJibpKo9nnSQL0MTRdnWttGyE5haGwK86xgMOkFLp7vEyfQPGLOJh5wNYiJ3V9PmUMDhV9u8kkQ==",
+      "version": "25.3.2",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-25.3.2.tgz",
+      "integrity": "sha512-RpV6r/ij22zRRdyBPcxDeKAzH43phWVKEjL2iksqo1Vz3CuBUrgmPpPhALKiRfU7OMCmeeO9vECBMsV0hMTG8Q==",
       "license": "MIT",
       "dependencies": {
         "undici-types": "~7.18.0"
@@ -7737,3 +10546,118 @@
     }
   }
 }
+{
+  "name": "parapharmacie-me",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1",
+    "vite-plugin-imagemin": "^0.6.1"
+  },
+  "dependencies": {
+    "@sentry/browser": "^10.40.0",
+    "@stripe/stripe-js": "^8.8.0",
+    "chart.js": "^4.5.1",
+    "emailjs-com": "^3.2.0",
+    "firebase": "^12.10.0",
+    "stripe": "^20.4.0"
+  }
+}
+cat: parapharmacie-me: Is a directory
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Détail produit</title>
+  <link rel="stylesheet" href="/src/css/main.css" />
+</head>
+<body>
+  <main id="productDetail"></main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+cat: public: Is a directory
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+
+const app = initializeApp({
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+});
+
+const db = getFirestore(app);
+
+await setDoc(doc(db, "roles", "admin001"), {
+  role: "admin"
+});
+
+console.log("Admin role created");
+<!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Boutique</title><link rel="stylesheet" href="/src/css/main.css"/></head><body>
+<header class="header"><div class="nav"><div class="brand">Parapharmacie.me</div><nav class="nav-links">
+  <a href="/index.html">Accueil</a>
+  <a href="/shop.html">Boutique</a>
+  <a href="/cart.html">Panier</a>
+  <a href="/login.html">Compte</a>
+</nav></div></header>
+<main class="container"><h2>Boutique</h2><section id="productsGrid" class="grid"></section></main>
+<script type="module" src="/src/main.js"></script></body></html>
+cat: src: Is a directory
+{
+  "users": [
+    {
+      "localId": "admin001",
+      "email": "anaslahraoui16@gmail.com",
+      "emailVerified": true,
+      "passwordHash": "aGFzaGVkX3Bhc3N3b3Jk",
+      "salt": "c2FsdF92YWx1ZQ=="
+    }
+  ]
+}
+import { defineConfig } from "vite";
+import viteImagemin from "vite-plugin-imagemin";
+import { resolve } from "path";
+
+export default defineConfig({
+  base: "/",
+  build: {
+    target: "es2019",
+    minify: "esbuild",
+    sourcemap: false,
+    assetsInlineLimit: 4096,
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, "index.html"),
+        shop: resolve(__dirname, "shop.html"),
+        product: resolve(__dirname, "product.html"),
+        cart: resolve(__dirname, "cart.html"),
+        checkout: resolve(__dirname, "checkout.html"),
+        login: resolve(__dirname, "login.html"),
+        admin: resolve(__dirname, "admin.html")
+      },
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore", "firebase/storage"],
+          charts: ["chart.js/auto"],
+          stripe: ["@stripe/stripe-js"]
+        }
+      }
+    }
+  },
+  plugins: [
+    viteImagemin({
+      mozjpeg: { quality: 75 },
+      pngquant: { quality: [0.7, 0.85] },
+      webp: { quality: 75 }
+    })
+  ]
+});
+@Infos-MacBook-Pro ~/parapharmacie-me % 
+
